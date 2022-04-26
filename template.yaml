@@ -1,0 +1,71 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Template to define Cognito and associated resources for development 
+  
+Globals:
+  Function:
+    Timeout: 3
+
+Resources:
+  AssignGroupCognitoTrigger:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: hello-world/
+      Handler: app.lambdaHandler
+      Runtime: nodejs14.x
+
+  CognitoUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      AccountRecoverySetting:
+        RecoveryMechanisms:
+          - Name: verified_email
+      AdminCreateUserConfig:
+        AllowAdminCreateUserOnly: false
+        InviteMessageTemplate:
+          EmailMessage: 'What is this supposed to be?'
+          EmailSubject: Welcome to HVGN!
+      AutoVerifiedAttributes:
+        - email
+      EmailConfiguration:
+        EmailSendingAccount: DEVELOPER
+        From: auth-dev@mail.dev.hvgn.net
+        SourceArn: arn:aws:ses:us-east-1:093879445146:identity/dev.hvgn.net
+      EmailVerificationMessage: Your email had been verified.
+      EmailVerificationSubject: Email verification
+      LambdaConfig:
+        PostConfirmation: !Ref AssignGroupCognitoTrigger
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+          RequireUppercase: true
+      UsernameAttributes:
+        - email
+      UserPoolName: hvgn-dev-user-pool
+      VerificationMessageTemplate:
+        DefaultEmailOption: CONFIRM_WITH_CODE
+        EmailMessage: 'Your verification code is {####}.' 
+        EmailSubject: Your verification code
+
+  CognitoUserGroup:
+    Type: AWS::Cognito::UserGroup
+
+  CognitoGoogleIdentityProvider:
+    Type: AWS::Cognito::UserPoolIdentityProvider
+
+  CognitoHvgnClientApplication:
+    Type: AWS::Cognito::UserPoolClient        
+
+      
+
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  # HelloWorldApi:
+  #  Description: "API Gateway endpoint URL for Prod stage for Hello World function"
+  #  Value: !Sub "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/hello/"
