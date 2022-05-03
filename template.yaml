@@ -26,16 +26,18 @@ Mappings:
     prod:
       values: 'https://hvgn.net'
   CognitoCustomDomain:
-    dev: cognito.dev.hvgn.net
-    prod: cognito.hvgn.net
+    dev: 
+      url: dev-cognito.hvgn.net
+    prod: 
+      url: cognito.hvgn.net
 
 Resources:
-  AssignGroupCognitoTrigger:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: hello-world/
-      Handler: app.lambdaHandler
-      Runtime: nodejs14.x
+  # AssignGroupCognitoTrigger:
+  #  Type: AWS::Serverless::Function
+  #  Properties:
+  #    CodeUri: hello-world/
+  #    Handler: app.lambdaHandler
+  #    Runtime: nodejs14.x
 
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
@@ -43,10 +45,11 @@ Resources:
       AccountRecoverySetting:
         RecoveryMechanisms:
           - Name: verified_email
+            Priority: 1
       AdminCreateUserConfig:
         AllowAdminCreateUserOnly: false
         InviteMessageTemplate:
-          EmailMessage: 'What is this supposed to be?'
+          EmailMessage: 'What is this supposed to be? {username} {####}'
           EmailSubject: Welcome to HVGN!
       AutoVerifiedAttributes:
         - email
@@ -54,10 +57,10 @@ Resources:
         EmailSendingAccount: DEVELOPER
         From: auth-dev@mail.dev.hvgn.net
         SourceArn: arn:aws:ses:us-east-1:093879445146:identity/dev.hvgn.net
-      EmailVerificationMessage: Your email had been verified.
+      EmailVerificationMessage: 'Your email had been verified {####}.'
       EmailVerificationSubject: Email verification
-      LambdaConfig:
-        PostConfirmation: !Ref AssignGroupCognitoTrigger
+ #     LambdaConfig:
+ #       PostConfirmation: !Ref AssignGroupCognitoTrigger
       Policies:
         PasswordPolicy:
           MinimumLength: 8
@@ -74,13 +77,13 @@ Resources:
         EmailSubject: Your verification code
 
   CognitoUserGroup:
-    Type: AWS::Cognito::UserGroup
+    Type: AWS::Cognito::UserPoolGroup
     Properties:
       Description: 'General group for HVGN'
       GroupName: hvgn-view
       Precedence: 5
       RoleArn: !GetAtt HvgnBackendLambdaExecutionRole.Arn
-      UserPoolId: !GetAtt CognitoUserPool
+      UserPoolId: !Ref CognitoUserPool
 
   GoogleFederatedIdentity:
     Type: AWS::Cognito::UserPoolIdentityProvider
@@ -97,9 +100,11 @@ Resources:
 
   CognitoClientApplication:
     Type: AWS::Cognito::UserPoolClient
+    DependsOn: GoogleFederatedIdentity
     Properties:
       AccessTokenValidity: 30
-      AllowedOAuthFlows: code
+      AllowedOAuthFlows: 
+        - code
       AllowedOAuthFlowsUserPoolClient: true
       AllowedOAuthScopes:
         - phone
