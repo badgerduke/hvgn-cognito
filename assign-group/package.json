@@ -1,0 +1,13 @@
+{
+  "name": "assign-group",
+  "version": "1.0.0",
+  "description": "Lambda to assign new user to Cognito User Pool group",
+  "main": "app.js",
+  "author": "Eric Hamacher",
+  "license": "MIT",
+  "dependencies": {
+    "aws-sdk": "^2.1128.0"
+  },
+  "scripts": {
+  }
+}
