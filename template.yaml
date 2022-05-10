@@ -17,6 +17,7 @@ Parameters:
     Type: String
     AllowedPattern: '[^\s@]+@[^\s@]+\.[^\s@]+'
     Description: The FROM address used in Cognito emails (user registration, password recovery)
+  
 
 Mappings: 
   CognitoCallbackUrls:
@@ -30,10 +31,10 @@ Mappings:
     prod:
       values: 'https://hvgn.net'
   CognitoCustomDomain:
-    dev: 
-      url: dev-cognito.hvgn.net
+    dev:
+      url: hvgn-dev-auth
     prod: 
-      url: cognito.hvgn.net
+      url: hvgn-auth
 
 Resources:
   AssignGroupCognitoTrigger:
@@ -42,46 +43,76 @@ Resources:
       CodeUri: assign-group/
       Handler: app.handler
       Runtime: nodejs14.x
+      Role: !GetAtt AssignGroupCognitoTriggerExecutionRole.Arn
+
+  AssignGroupCognitoTriggerExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - 'lambda.amazonaws.com'
+            Action:
+              - 'sts:AssumeRole'
       Policies:
-        - Statement:
-          - Sid: CognitoAssignUserToGroupLogs
-            Effect: Allow
-            Action:
-              - logs:CreateLogStream
-              - logs:CreateLogGroup
-            Resource: !Join
-              - ''
-              - - 'arn:aws:logs:'
-                - !Ref "AWS::Region"
-                - ':'
-                - !Ref "AWS::AccountId"
-                - ':log-group:/aws/lambda/hvgn-cognito-assign-group-'
-                - !Ref Environment
-                - '*:*'
-          - Sid: CognitoAssignUserToGroupLogEvents
-            Effect: Allow
-            Action:
-              - logs:PutLogEvents
-            Resource: !Join
-              - ''
-              - - 'arn:aws:logs:'
-                - !Ref "AWS::Region"
-                - ':'
-                - !Ref "AWS::AccountId"
-                - ':log-group:/aws/lambda/hvgn-cognito-assign-group-'
-                - !Ref Environment
-                - '*:*:*'
-          - Sid: CognitoAssignUserToGroupCommand
-            Effect: Allow
-            Action:
-              - cognito-idp:AdminAddUserToGroup
-            Resource: !Join
-              - ''
-              - - 'arn:aws:cognito-idp:'
-                - !Ref "AWS::Region"
-                - ':'
-                - !Ref "AWS::AccountId"
-                - ':userpool/*/*'
+        - PolicyName: !Join
+            - ''
+            - - 'assign-group-cognito-trigger-'
+              - !Ref Environment
+              - '-policy'
+          PolicyDocument:
+            Statement:
+              - Sid: CognitoAssignUserToGroupLogs
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:CreateLogGroup
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:logs:'
+                    - !Ref "AWS::Region"
+                    - ':'
+                    - !Ref "AWS::AccountId"
+                    - ':log-group:/aws/lambda/hvgn-cognito-assign-group-'
+                    - !Ref Environment
+                    - '*:*'
+              - Sid: CognitoAssignUserToGroupLogEvents
+                Effect: Allow
+                Action:
+                  - logs:PutLogEvents
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:logs:'
+                    - !Ref "AWS::Region"
+                    - ':'
+                    - !Ref "AWS::AccountId"
+                    - ':log-group:/aws/lambda/hvgn-cognito-assign-group-'
+                    - !Ref Environment
+                    - '*:*:*'
+              - Sid: CognitoAssignUserToGroupCommand
+                Effect: Allow
+                Action:
+                  - cognito-idp:AdminAddUserToGroup
+                Resource: !Join
+                  - ''
+                  - - 'arn:aws:cognito-idp:'
+                    - !Ref "AWS::Region"
+                    - ':'
+                    - !Ref "AWS::AccountId"
+                    - ':userpool/*/*'    
+
+  CongitoTriggerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: 'lambda:InvokeFuction'
+      FunctionName: !GetAtt AssignGroupCognitoTrigger.Arn
+      Principal: 'cognito-idp.amazonaws.com'
+      SourceArn: !GetAtt CognitoUserPool.Arn
+      SourceAccount: !Ref 'AWS::AccountId'
+
 
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
@@ -94,16 +125,16 @@ Resources:
         AllowAdminCreateUserOnly: false
       AutoVerifiedAttributes:
         - email
-      EmailConfiguration:
-        EmailSendingAccount: COGNITO_DEFAULT
-        SourceArn: !Join
-          - ''
-          - - 'arn:aws:ses:'
-            - !Ref "AWS::Region"
-            - ':'
-            - !Ref "AWS::AccountId"
-            - ':identity/'
-            - !Ref CognitoFromAddress
+#      EmailConfiguration:
+#        EmailSendingAccount: COGNITO_DEFAULT
+#        SourceArn: !Join
+#          - ''
+#          - - 'arn:aws:ses:'
+#            - !Ref "AWS::Region"
+#            - ':'
+#            - !Ref "AWS::AccountId"
+#            - ':identity/'
+#            - !Ref CognitoFromAddress
       EmailVerificationMessage: 'Your email had been verified {####}.'
       EmailVerificationSubject: 'Email verification'
       LambdaConfig:
@@ -181,13 +212,30 @@ Resources:
         RefreshToken: minutes
       UserPoolId: !Ref CognitoUserPool
 
+# AWS does not provide a way in CloudFormtaion to link a Route53 alias record
+# to a Cognito User Pool Domain.  YOu must use a custom resource.  Specifically,
+# there is no 'AliasTarget' attribute for type 'AWS::Cognito::UserPoolDomain'.
+# See https://github.com/aws-cloudformation/cloudformation-coverage-roadmap/issues/241
+# See https://github.com/aws-cloudformation/cloudformation-coverage-roadmap/issues/356
+
+# This template will use the built-in domain customization.      
+
   CognitoUserPoolCustomDomain:
     Type: AWS::Cognito::UserPoolDomain
     Properties:
-      CustomDomainConfig:
-        CertificateArn: "{{resolve:secretsmanager:HvgnDomainCertificate:SecretString:arn}}"
+#      CustomDomainConfig:
+#        CertificateArn: "{{resolve:secretsmanager:HvgnDomainCertificate:SecretString:arn}}"
       Domain: !FindInMap [ CognitoCustomDomain, !Ref Environment, url]
       UserPoolId: !Ref CognitoUserPool
+
+#  CogntioCustomDomainAliasRecord:
+#    Type: AWS::Route53::RecordSet
+#    Properties:
+#      AliasTarget: !GetAtt CognitoUserPoolCustomDomain.AliasTarget
+#      HostedZoneName: 'hvgn.net.'
+#      Name: !FindInMap [ CognitoCustomDomain, !Ref Environment, url]
+#      Type: A
+
 
   HvgnBackendLambdaExecutionRole:
     Type: AWS::IAM::Role
