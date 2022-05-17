@@ -13,11 +13,12 @@ const cognitoIdp = new AWS.CognitoIdentityServiceProvider();
  * @returns {Object} object - API Gateway Lambda Proxy Output Format
  * 
  */
-exports.handler = async (event, context) => {
-    // const {userPoolId, userName} = event;
-    console.log(`request atts ${JSON.stringify(event.request.userAttributes)}`);
-    // await addUserToGroup('hvgn-view', userPoolId, userName);
-    return;
+exports.handler = async (event, context, callback) => {
+    const {userPoolId, userName} = event;
+    // console.log(`request UPID ${JSON.stringify(event.userPoolId)}`);
+    await addUserToGroup('hvgn-view', userPoolId, userName);
+    // Return to Amazon Cognito
+    callback(null, event);
 };
 
 const addUserToGroup = (groupName, userPoolId, username) => {

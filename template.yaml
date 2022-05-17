@@ -13,12 +13,7 @@ Parameters:
       - dev
       - prod
     Description: Enter dev for development and prod for production
-  CognitoFromAddress:
-    Type: String
-    AllowedPattern: '[^\s@]+@[^\s@]+\.[^\s@]+'
-    Description: The FROM address used in Cognito emails (user registration, password recovery)
   
-
 Mappings: 
   CognitoCallbackUrls:
     dev:
@@ -44,6 +39,13 @@ Resources:
       Handler: app.handler
       Runtime: nodejs14.x
       Role: !GetAtt AssignGroupCognitoTriggerExecutionRole.Arn
+      Events:
+        CognitoPostConfirmationEvent:
+          Type: Cognito
+          Properties:
+            Trigger: 
+              - PostConfirmation
+            UserPool: !Ref CognitoUserPool
 
   AssignGroupCognitoTriggerExecutionRole:
     Type: AWS::IAM::Role
@@ -70,28 +72,12 @@ Resources:
                 Action:
                   - logs:CreateLogStream
                   - logs:CreateLogGroup
-                Resource: !Join
-                  - ''
-                  - - 'arn:aws:logs:'
-                    - !Ref "AWS::Region"
-                    - ':'
-                    - !Ref "AWS::AccountId"
-                    - ':log-group:/aws/lambda/hvgn-cognito-assign-group-'
-                    - !Ref Environment
-                    - '*:*'
+                Resource: '*'
               - Sid: CognitoAssignUserToGroupLogEvents
                 Effect: Allow
                 Action:
                   - logs:PutLogEvents
-                Resource: !Join
-                  - ''
-                  - - 'arn:aws:logs:'
-                    - !Ref "AWS::Region"
-                    - ':'
-                    - !Ref "AWS::AccountId"
-                    - ':log-group:/aws/lambda/hvgn-cognito-assign-group-'
-                    - !Ref Environment
-                    - '*:*:*'
+                Resource: '*'
               - Sid: CognitoAssignUserToGroupCommand
                 Effect: Allow
                 Action:
@@ -102,18 +88,8 @@ Resources:
                     - !Ref "AWS::Region"
                     - ':'
                     - !Ref "AWS::AccountId"
-                    - ':userpool/*/*'    
-
-  CongitoTriggerPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: 'lambda:InvokeFuction'
-      FunctionName: !GetAtt AssignGroupCognitoTrigger.Arn
-      Principal: 'cognito-idp.amazonaws.com'
-      SourceArn: !GetAtt CognitoUserPool.Arn
-      SourceAccount: !Ref 'AWS::AccountId'
-
-
+                    - ':userpool/*'    
+ 
   CognitoUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -125,20 +101,8 @@ Resources:
         AllowAdminCreateUserOnly: false
       AutoVerifiedAttributes:
         - email
-#      EmailConfiguration:
-#        EmailSendingAccount: COGNITO_DEFAULT
-#        SourceArn: !Join
-#          - ''
-#          - - 'arn:aws:ses:'
-#            - !Ref "AWS::Region"
-#            - ':'
-#            - !Ref "AWS::AccountId"
-#            - ':identity/'
-#            - !Ref CognitoFromAddress
       EmailVerificationMessage: 'Your email had been verified {####}.'
       EmailVerificationSubject: 'Email verification'
-      LambdaConfig:
-        PostConfirmation: !GetAtt AssignGroupCognitoTrigger.Arn
       Policies:
         PasswordPolicy:
           MinimumLength: 8
