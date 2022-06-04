@@ -142,7 +142,9 @@ Resources:
 
   CognitoClientApplication:
     Type: AWS::Cognito::UserPoolClient
-    DependsOn: GoogleFederatedIdentity
+    DependsOn: 
+      - GoogleFederatedIdentity
+      - HvgnResourceServer
     Properties:
       AccessTokenValidity: 30
       AllowedOAuthFlows: 
@@ -153,7 +155,7 @@ Resources:
         - email
         - profile
         - openid
-        - aws.cognito.signin.user.admin
+        - 'api.hvgn.net/hvgn'
       CallbackURLs: !Split [",", !FindInMap [ CognitoCallbackUrls, !Ref Environment, values] ]
       ClientName: !Join
         - ''
@@ -200,6 +202,15 @@ Resources:
 #      Name: !FindInMap [ CognitoCustomDomain, !Ref Environment, url]
 #      Type: A
 
+  HvgnResourceServer:
+    Type: AWS::Cognito::UserPoolResourceServer
+    Properties:
+      Identifier: api.hvgn.net
+      Name: hvgn
+      Scopes:
+        - ScopeDescription: Allow access to HVGN services
+          ScopeName: hvgn
+      UserPoolId: !Ref CognitoUserPool
 
   HvgnBackendLambdaExecutionRole:
     Type: AWS::IAM::Role
@@ -268,4 +279,7 @@ Outputs:
     Description: The ARN of the user pool
     Value: !GetAtt CognitoUserPool.Arn
     Export:
-      Name: HvgnCognitoUserPoolArn
+      Name: !Join
+        - '-'
+        - - 'HvgnUserPoolArn'
+          - !Ref Environment

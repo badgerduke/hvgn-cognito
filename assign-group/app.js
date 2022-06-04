@@ -15,7 +15,9 @@ const cognitoIdp = new AWS.CognitoIdentityServiceProvider();
  */
 exports.handler = async (event, context, callback) => {
     const {userPoolId, userName} = event;
-    // console.log(`request UPID ${JSON.stringify(event.userPoolId)}`);
+    console.log(`userPoolId ${JSON.stringify(userPoolId)}`);
+    console.log(`userName ${JSON.stringify(userName)}`);
+    console.log(`event ${JSON.stringify(event)}`);
     await addUserToGroup('hvgn-view', userPoolId, userName);
     // Return to Amazon Cognito
     callback(null, event);
