@@ -2,4 +2,4 @@
 
 ![Diagram]
 
-[Diagram]: https://github.com/badgerduke/hvgn-cognito/blob/main/hvgn%20cognito.png
+[Diagram]: https://github.com/badgerduke/hvgn-cognito/blob/master/hvgn%20cognito.png
