@@ -1,0 +1,1 @@
+sam deploy --stack-name hvgn-cognito-prod --s3-bucket hvgn-sam-cognito-prod --parameter-overrides Environment=prod --capabilities CAPABILITY_NAMED_IAM

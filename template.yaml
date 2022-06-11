@@ -112,7 +112,11 @@ Resources:
           RequireUppercase: true
       UsernameAttributes:
         - email
-      UserPoolName: hvgn-dev-user-pool
+      UserPoolName: !Join
+        - '-'
+        - - 'hvgn'
+          - !Ref Environment
+          - 'user-pool'
       VerificationMessageTemplate:
         DefaultEmailOption: CONFIRM_WITH_CODE
         EmailMessage: 'Your verification code is {####}.' 
@@ -133,8 +137,8 @@ Resources:
       AttributeMapping:
         email: "email"
       ProviderDetails:
-        client_id: "{{resolve:secretsmanager:HvgnDevCognitoGoogleIdentityProvider:SecretString:HvgnDevCognitoGoogleClientId}}"
-        client_secret: "{{resolve:secretsmanager:HvgnDevCognitoGoogleIdentityProvider:SecretString:HvgnDevCognitoGoogleClientSecret}}"
+        client_id: "{{resolve:secretsmanager:HvgnCognitoGoogleIdentityProvider:SecretString:HvgnCognitoGoogleClientId}}"
+        client_secret: "{{resolve:secretsmanager:HvgnCognitoGoogleIdentityProvider:SecretString:HvgnCognitoGoogleClientSecret}}"
         authorize_scopes: "profile email openid"
       ProviderName: Google
       ProviderType: Google
